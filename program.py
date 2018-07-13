@@ -49,4 +49,3 @@ if __name__ == '__main__':
     art.recognize(np.array([0, 1, 0, 1, 0]))
     art.recognize(np.array([0, 1, 1, 0, 0]))
     art.recognize(np.array([0, 1, 1, 0, 0]))
-    
