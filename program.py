@@ -8,11 +8,11 @@ class ART1:
         self.k = k
         self.w = np.zeros(shape=(self.m, self.k), dtype=float)
         self.t = np.zeros(shape=(self.m, self.k), dtype=float)
-        self.lam = 1.0
+        self.lam = 2.0
         self.v = 0.5
-        self.members = np.zeros(self.k, dtype=float)
+        self.members = np.zeros(self.k, dtype=int)
 
-    def initialize(self, x):
+    def _initialize(self, x):
         assert len(x) == self.m
         sum_x = x.sum()
 
@@ -20,16 +20,14 @@ class ART1:
 
         index = np.nonzero(self.members == 0)[0][0]
         self.members[index] += 1
-
-        print('Create new cluster {} for {}'.format(index, x))
-
+        # print('Create new cluster {} for {}'.format(index, x))
         for i in range(self.m):
             self.w[i, index] = (self.lam * x[i]) / (self.lam - 1 + sum_x)
             # self.w[i, self.number_active] = x[i] / (self.lam + sum_x)
             self.t[i, index] = x[i]
         return index
 
-    def clear(self):
+    def _clear(self):
         self.w = np.zeros(shape=(self.m, self.k), dtype=float)
         self.t = np.zeros(shape=(self.m, self.k), dtype=float)
 
@@ -49,7 +47,7 @@ class ART1:
                 return arg
         return -1
 
-    def recalculation(self, examples, arg):
+    def _recalculation(self, examples, arg):
         for x in examples:
             sum_x = x.sum()
             for i in range(self.m):
@@ -57,46 +55,55 @@ class ART1:
                 # self.w[i, arg] = (1-self.v)*self.w[i, arg] + self.v * x[i] / (self.lam + sum_x)
                 self.t[i, arg] = (1 - self.v) * self.t[i, arg] + self.v * x[i]
 
-    def fit_transform(self, features):
-        assert features.ndim == 2
-        self.m = features.shape[1]
-        self.clear()
+    def _fit_transform(self, X):
+        assert X.ndim == 2
+        self.m = X.shape[1]
+        self._clear()
 
-        clusters = np.ones(features.shape[0], dtype=int) * -1
+        clusters = np.ones(X.shape[0], dtype=int) * -1
         done = True
 
         while done:
             done = False
-
-            for i, x in enumerate(features):
+            for i, x in enumerate(X):
                 cluster = self._predict(x)
-
                 # if cluster not found, create new
                 if cluster == -1:
                     if clusters[i] != -1:
                         self.members[clusters[i]] -= 1
-                    clusters[i] = self.initialize(x)
-
+                    clusters[i] = self._initialize(x)
                     continue
 
                 if cluster != clusters[i]:
                     done = True
 
                     self.members[cluster] += 1
-                    self.recalculation(x.reshape(1, self.m), cluster)
-
+                    self._recalculation(x.reshape(1, self.m), cluster)
                     old_cluster = clusters[i]
                     clusters[i] = cluster
                     if old_cluster != -1:
                         self.members[old_cluster] -= 1
-                        self.recalculation(features[clusters == old_cluster], old_cluster)
-
+                        self._recalculation(X[clusters == old_cluster], old_cluster)
+        '''
         for i in range(clusters.max() + 1):
             print(i)
             print(features[clusters == i])
         print()
-
+        '''
         return np.array(clusters)
+
+    def fit(self, X):
+        self._fit_transform(X)
+        return self
+
+    def fit_transform(self, X):
+        return self._fit_transform(X)
+
+    def predict(self, X):
+        res = []
+        for x in X:
+            res.append(self._predict(x))
+        return np.array(res)
 
 
 if __name__ == '__main__':
@@ -122,4 +129,5 @@ if __name__ == '__main__':
                          [0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0],
                          [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0]])
 
-    print(art.fit_transform(database))
+    print(art.fit(database))
+    print(art.predict(database))
